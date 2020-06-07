@@ -1,6 +1,7 @@
 
 open Ast
 open Llvm
+module LA = Llvm_analysis
 
 type gen_ctx = { md: llmodule; b: llbuilder }
 
@@ -167,7 +168,10 @@ let compile_function gc (f, xs, body) =
           build_ret (const_int i32 0) gc.b |> ignore)
     else
       build_ret result gc.b |> ignore;
-    Llvm_analysis.verify_function func |> (string_of_bool >> print_endline);
+    if LA.verify_function func then
+      print_endline ("Successfully compiled " ^ f ^ "!")
+    else
+      print_endline ("Code generation failed for " ^ f ^ "!")
   end
 
 let compile_definitions md defs =
