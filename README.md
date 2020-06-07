@@ -1,6 +1,8 @@
 # IMP Compiler
 An LLVM-based toy compiler for a variant of "IMP" described in CS311 (Programming Languages Design & Implementation). 
 
+![screenshot](meta/screen.png)
+
 ## Compilation
 In order to compile this, you use the `dune` build system (install dependencies w/ `opam`).
 ```
@@ -24,7 +26,7 @@ In order to run an IMP program, the program must contain a `main` function w/ 0 
 llc program.ll
 gcc program.s -o program && ./program
 ```
-You can also play around with LLVM's own optimisations w/ `opt`, for example: `opt -O3 program.ll -S` will apply aggressive optimisations (you can list all of the optimisations w/ `opt -h`).
+You can also play around with LLVM's own optimisations w/ `opt`, for example: `opt --O3 program.ll -S` will apply aggressive optimisations (you can list all of the optimisations w/ `opt -h`).
 
 ## TODO:
 - Use OCaml's argument parser to allow for more flexible options (e.g. `-parse` to dump the AST).
