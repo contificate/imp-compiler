@@ -5,7 +5,7 @@ An LLVM-based toy compiler for a variant of "IMP" described in CS311 (Programmin
 
 ## Compilation
 In order to compile this, you use the `dune` build system (install dependencies w/ `opam`).
-```
+```bash
 opam install dune menhir llvm
 cd imp-compiler
 dune build src/main.exe
@@ -21,8 +21,8 @@ In order to run an IMP program, the program must contain a `main` function w/ 0 
 
 - You can interpret the programs w/ `lli fileX.ll`.
 - You can target an architecture supported by LLVM w/ `llc` (and a target architecture provided by `-march=`, e.g. `llc -march=arm64 program.ll` will produce AArch64 assembly):
-```
-./build/default/src/main.exe program.ll
+```bash
+./build/default/src/main.exe -c program.imp
 llc program.ll -relocation-model=pic
 gcc program.s -o program && ./program
 ```
