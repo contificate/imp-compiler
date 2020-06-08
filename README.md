@@ -23,9 +23,10 @@ In order to run an IMP program, the program must contain a `main` function w/ 0 
 - You can target an architecture supported by LLVM w/ `llc` (and a target architecture provided by `-march=`, e.g. `llc -march=arm64 program.ll` will produce AArch64 assembly):
 ```
 ./build/default/src/main.exe program.ll
-llc program.ll
+llc program.ll -relocation-model=pic
 gcc program.s -o program && ./program
 ```
+Please note the use of `-relocation-model=pic`, this will instruct the compiler to load the format string pc-relative which is required by default on most 64 bit *nix systems.
 You can also play around with LLVM's own optimisations w/ `opt`, for example: `opt --O3 program.ll -S` will apply aggressive optimisations (you can list all of the optimisations w/ `opt -h`).
 
 ## TODO:
