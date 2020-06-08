@@ -30,13 +30,15 @@ Please note the use of `-relocation-model=pic`, this will instruct the compiler 
 You can also play around with LLVM's own optimisations w/ `opt`, for example: `opt --O3 program.ll -S` will apply aggressive optimisations (you can list all of the optimisations w/ `opt -h`).
 
 ## TODO:
-- Use OCaml's argument parser to allow for more flexible options (e.g. `-parse` to dump the AST).
+- Add more flexible command line options.
 - Actually handle parsing errors w/ locations.
 - Provide `emacs`, `vim`, etc. highlighting files.
 - Wouldn't be far-fetched to provide debugging information w/ lines corresponding to imperative constructs of the language. Though this would require actually using LLVM's targeting APIs directly.
-- Provide more example programs in an `example/` sub-directory.
+- Provide more example programs in the `example/` sub-directory.
+
 ## Implementation Notes 
 - The `new` construct is known as `let` in this language, though, that might change given that both the refer to mutable lvalues.
 - All variables are spilled to local `alloca` locations, this is so that all variables are lvalues such that we don't need to insert phi functions in order to merge re-defs of SSA variables at join points. Luckily for us, LLVM's `mem2reg` pass does a really good job of lifting these. The compilation for a function proceeds as you would expect: all parameters are spilled into local "stack" (`alloca`) locations then the body is compiled w/ an environment prepended with the spilled locations (all read/writes of named variables compiled to load/stores, respectively). The compilation of `let` follows  a similar scheme.
-- The grammar hasn't been properly factored and I'm missing some useful constructs. For example, there are currently ~6  shift/reduce conflicts that menhir arbitrarily resolves. As for the useful constructs that are currently lacking: there's no unary `-x` syntax for negative literals (though this would be easy to add - currently one can just define `-x` as `0 - x`), there's no `if` statement without an `else`.
+- There's no `if` without `else`.
+- There's currently 6 shift/reduce conflicts that exist because of how `let` and `do` interace with the 3 operators (`+`, `-`, `*`). The problem lies in the parsing of an expression like `let x := 3 in x + let y ;= 4 in y` which could parse as both `let x := 3 in x + (let y := 4 in y)` and `(let x := 3 in x) + (let y := 4 in y)`, the latter being incorrect. I'm unsure how to factor the current grammar to disambiguate these cases and want to avoid changing the grammar (thus imposing burden on the programmer) just to have syntactic noise purely to disambiguate the cases (which seem to be benign enough for menhir to resolve arbitrarily).
 - There's probably bugs. 
