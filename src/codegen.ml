@@ -37,6 +37,7 @@ let value_of_var gc env x =
 let op_of_op = function
   | Add -> build_add
   | Sub -> build_sub
+  | Mul -> build_mul
 
 let cond_of_cmp = function
   | Eq -> Icmp.Eq

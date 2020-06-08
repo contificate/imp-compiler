@@ -1,6 +1,6 @@
 
 (* arithmetic operators on integer expressions *)
-type op = Add | Sub
+type op = Add | Sub | Mul
 [@@deriving show]
 
 (* comparison operators on boolean expressions *)

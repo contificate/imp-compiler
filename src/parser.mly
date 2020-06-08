@@ -1,5 +1,19 @@
 
-(* TODO: _actually_ resolve the ambiguity? *)
+(* 
+
+The shift/reduce conflict lies in the "let" and "do" constructs. 
+
+For example: let x := 3 in x + let y := 4 in y
+should parse as:
+let x := 3 in x + (let y := 4 in y)
+however the ambiguity is that it could be parsed as
+(let x := 3 in x) + (let y := 4 in y)
+which would be wrong.
+
+I can't think of a way to factor this grammar without changing the meaning
+of its programs or changing the syntax to introduce tokens that remove the conflict (at the cost of burden to the programmer).
+
+*)
 
 (* lexemes *)
 %token <int> INT
@@ -18,6 +32,7 @@
 
 (* operators *)
 %token ASSIGN
+%token MUL
 %token ADD SUB
 %token EQ NE LT LE GT GE
 
@@ -27,8 +42,11 @@
 
 %start <Ast.def list> program
 
+(* fix 3 conflicts by assigning precedences *)
+%left ADD SUB
+%left MUL
+
 %type <Ast.expr> expr
-%type <Ast.op> op
 %type <Ast.bexpr> bexpr 
 %type <Ast.cmp> cmp
 %type <Ast.cmd> cmd
@@ -45,22 +63,22 @@ expr:
     { Literal x }
   | x = IDENT
     { Var x }
-  | x = expr; o = op; y = expr
-    { Iop (o, x, y) }
+  | x = expr ADD y = expr
+    { Iop (Add, x, y) }
+  | x = expr SUB y = expr
+    { Iop (Sub, x, y) }
+  | x = expr MUL y = expr
+    { Iop (Mul, x, y) }
+  | LPAR e = expr RPAR
+    { e }
+  | SUB x = INT
+    { Literal (-x) }
   | LET x = IDENT ASSIGN e = expr IN y = expr
     { Let (x, e, y) }
   | f = IDENT LPAR xs = separated_list(COMMA, expr) RPAR
-    { Apply (f, xs) }
+    { Apply (f, xs) } 
   | DO c = cmd RETURN e = expr
     { Do (c, e) }
-  | LPAR e = expr RPAR
-    { e }
-
-op:
-  | ADD
-    { Add }
-  | SUB
-    { Sub }
 
 cmp:
   | EQ

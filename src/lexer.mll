@@ -23,6 +23,8 @@ rule tokenise = parse
     { ADD }
 | '-'
     { SUB }
+| '*'
+    { MUL }
 | ','
     { COMMA }
 | '!'
