@@ -1,0 +1,18 @@
+
+integer mult(x, y) =
+  let a := 0 in
+  do while (y > 0) {
+    a := a + x;
+    y := y - 1;
+  } return a
+
+integer fact(x) =
+  let z := x in let y := 1 in
+  do
+  while (!(z = 0)) {
+    y := mult(y, z);
+    z := z - 1;
+  } return y
+
+integer main() =
+  fact(4) + fact(5)
