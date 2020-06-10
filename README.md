@@ -11,6 +11,9 @@ cd imp-compiler
 dune build src/main.exe
 ```
 
+### Warning
+For some reason you'll need a `menhir` version `<=` 20200211 as the latest version (20200525 - released 9th June 2020) causes the grammar to be rejected. I've yet to clarify if this is a bug in the grammar, menhir, how menhir interacts w/ dune, etc.
+
 ## Usage
 You can view the options by passing `-h` to the compiler executable.
 Currently, there are two options:
@@ -40,5 +43,4 @@ You can also play around with LLVM's own optimisations w/ `opt`, for example: `o
 - The `new` construct is known as `let` in this language, though, that might change given that both the refer to mutable lvalues.
 - All variables are spilled to local `alloca` locations, this is so that all variables are lvalues such that we don't need to insert phi functions in order to merge re-defs of SSA variables at join points. Luckily for us, LLVM's `mem2reg` pass does a really good job of lifting these. The compilation for a function proceeds as you would expect: all parameters are spilled into local "stack" (`alloca`) locations then the body is compiled w/ an environment prepended with the spilled locations (all read/writes of named variables compiled to load/stores, respectively). The compilation of `let` follows  a similar scheme.
 - There's no `if` without `else`.
-- There's currently 6 shift/reduce conflicts that exist because of how `let` and `do` interace with the 3 operators (`+`, `-`, `*`). The problem lies in the parsing of an expression like `let x := 3 in x + let y := 4 in y` which could parse as both `let x := 3 in x + (let y := 4 in y)` and `(let x := 3 in x) + (let y := 4 in y)`, the latter being incorrect. I'm unsure how to factor the current grammar to disambiguate these cases and want to avoid changing the grammar (thus imposing burden on the programmer) just to have syntactic noise purely to disambiguate the cases (which seem to be benign enough for menhir to resolve arbitrarily).
 - There's probably bugs. 

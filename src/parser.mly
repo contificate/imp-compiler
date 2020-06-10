@@ -1,18 +1,6 @@
 
 (* 
-
-The shift/reduce conflict lies in the "let" and "do" constructs. 
-
-For example: let x := 3 in x + let y := 4 in y
-should parse as:
-let x := 3 in x + (let y := 4 in y)
-however the ambiguity is that it could be parsed as
-(let x := 3 in x) + (let y := 4 in y)
-which would be wrong.
-
-I can't think of a way to factor this grammar without changing the meaning
-of its programs or changing the syntax to introduce tokens that remove the conflict (at the cost of burden to the programmer).
-
+IMP Parser
 *)
 
 (* lexemes *)
@@ -29,6 +17,22 @@ of its programs or changing the syntax to introduce tokens that remove the confl
 (* keywords *)
 %token IF ELSE WHILE LET IN INTEGER COMMAND DO RETURN
 %token TRUE FALSE
+
+(* 
+User for disambiguating:
+let x := 3 in x + let y := 4 in y
+
+It must parse as: let x := 3 in x + (let y := 4 in y)
+as opposed to (let x := 3 in x) + (let y := 4 in y)
+
+A similar example can be constructed for the "do" construct:
+
+do {} return x + do {} return x
+should parse as: do {} return x + (do {} return x)
+
+Menhir can resolve this arbitrarily but this silences the shift/reduce warning.
+*)
+%nonassoc IN RETURN
 
 (* operators *)
 %token ASSIGN
