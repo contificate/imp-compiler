@@ -5,6 +5,7 @@
     (preprocess (pps ppx_deriving.show)))
 
 (menhir
+    (infer false)
     (modules parser))
 
 (ocamllex lexer)
