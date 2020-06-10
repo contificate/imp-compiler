@@ -11,9 +11,6 @@ cd imp-compiler
 dune build src/main.exe
 ```
 
-### Warning
-For some reason you'll need a `menhir` version `<=` 20200211 as the latest version (20200525 - released 9th June 2020) causes the grammar to be rejected. I've yet to clarify if this is a bug in the grammar, menhir, how menhir interacts w/ dune, etc.
-
 ## Usage
 You can view the options by passing `-h` to the compiler executable.
 Currently, there are two options:
