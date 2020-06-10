@@ -9,6 +9,9 @@ let ctx = create_context ()
 let i32 = i32_type ctx
 type env = (string * llvalue) list
 
+let const_tt = const_int (i1_type ctx) 1
+let const_ff = const_int (i1_type ctx) 0
+
 exception Error of string
 
 let (>>) g f = (fun x -> g x |> f)
@@ -46,6 +49,21 @@ let cond_of_cmp = function
   | Le -> Icmp.Sle
   | Gt -> Icmp.Sgt
   | Ge -> Icmp.Sge
+
+let negate_cmp = function
+  | Eq -> Ne
+  | Ne -> Eq
+  | Lt -> Ge
+  | Le -> Gt
+  | Gt -> Le
+  | Ge -> Lt
+
+let negate_bexpr = function
+  | True -> False
+  | False -> True
+  | Negate b -> b
+  | Bop (cmp, x, y) ->
+     Bop (negate_cmp cmp, x, y) 
 
 let rec compile_expr gc env e =
   match e with
@@ -135,13 +153,15 @@ let rec compile_expr gc env e =
         end
   and
     compile_bexpr gc env = function
-    | True -> const_int (i1_type ctx) 1
-    | False -> const_int (i1_type ctx) 0
+    | True -> const_tt
+    | False -> const_ff
+    | Negate b ->
+       compile_bexpr gc env (negate_bexpr b)
     | Bop (op, x, y) ->
        let compile = compile_expr gc env >> fst in
        let (lhs, rhs) = (compile x, compile y) in
        build_icmp (cond_of_cmp op) lhs rhs "" gc.b
-    | _ -> const_int (i1_type ctx) 0
+
 
 let compile_function gc (f, xs, body) =
   let arity = List.length xs in
