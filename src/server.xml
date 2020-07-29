@@ -1,0 +1,16 @@
+
+<node>
+  <!-- Expose compiler as a DBus service. -->
+  <interface name="org.imp.Compiler">
+    <!-- Parse an IMP program, producing an AST. -->
+    <method name="ParseIMP">
+      <arg direction="in" type="s" />
+      <arg direction="out" type="s" />
+    </method>
+    <!-- Compile an IMP program, producing an LLVM module. -->
+    <method name="CompileIMP">
+      <arg direction="in" type="s" />
+      <arg direction="out" type="s" />
+    </method>
+  </interface>
+</node>

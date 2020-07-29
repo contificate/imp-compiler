@@ -1,11 +1,17 @@
 
 (executable
     (name main)
-    (libraries llvm llvm.analysis core)
-    (preprocess (pps ppx_deriving.show)))
+    (libraries lwt obus llvm llvm.analysis core yojson ppx_deriving_yojson.runtime)
+    (preprocess (pps ppx_deriving.show lwt_ppx ppx_deriving_yojson)))
 
 (menhir
     (infer false)
     (modules parser))
 
 (ocamllex lexer)
+
+(rule
+    (targets server.ml server.mli)
+    (deps server.xml)
+    (action
+        (run obus-gen-interface -keep-common -o server %{deps})))
