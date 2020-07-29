@@ -16,6 +16,7 @@ You can view the options by passing `-h` to the compiler executable.
 Currently, there are two options:
 - `-p file.imp` - this will attempt to parse the program and print the AST to stdout
 - `-c file.imp` - this will attempt compile the program and produce a `file.imp.ll` file in the same directory
+- `-s` - this will expose the compiler as a DBus interface (exposing the methods `CompileIMP` and `ParseImp`)
 
 In order to run an IMP program, the program must contain a `main` function w/ 0 arguments (as that compiles directly to `main` that gets called from `libc`'s entry routine):
 
@@ -28,6 +29,13 @@ gcc program.s -o program && ./program
 ```
 Please note the use of `-relocation-model=pic`, this will instruct the compiler to load the format string pc-relative which is required by default on most 64 bit *nix systems.
 You can also play around with LLVM's own optimisations w/ `opt`, for example: `opt --O3 program.ll -S` will apply aggressive optimisations (you can list all of the optimisations w/ `opt -h`).
+
+## DBus interface
+The compiler has an option `-s` that makes it run as a DBus service, exposing relevant functionality over an interface called `Compiler`.
+A small, example, GUI program, written in Java, to demonstrate OCaml interop over DBus is provided in `/dbus-example/editor`:
+![screenshot](meta/editor.png)
+
+This program is purposely very limited as it only exists to demonstrate the simplicity of invoking the compiler from a remote process.
 
 ## TODO:
 - Add more flexible command line options.
