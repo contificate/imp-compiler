@@ -1,14 +1,14 @@
 # IMP Compiler
-An LLVM-based toy compiler for a variant of "IMP" described in CS311 (Programming Languages Design & Implementation). 
+An LLVM-based toy compiler for a variant of "IMP" described in CS311 (Programming Language Design & Implementation). 
 
 ![screenshot](meta/screen.png)
 
 ## Compilation
 In order to compile this, you use the `dune` build system (install dependencies w/ `opam`).
 ```bash
-opam install dune menhir llvm
+opam install dune menhir llvm obus ppx_deriving_yojson
 cd imp-compiler
-dune build src/main.exe
+dune build
 ```
 
 ## Usage
@@ -31,18 +31,12 @@ Please note the use of `-relocation-model=pic`, this will instruct the compiler 
 You can also play around with LLVM's own optimisations w/ `opt`, for example: `opt --O3 program.ll -S` will apply aggressive optimisations (you can list all of the optimisations w/ `opt -h`).
 
 ## DBus interface
-The compiler has an option `-s` that makes it run as a DBus service, exposing relevant functionality over an interface called `Compiler`.
-A small, example, GUI program, written in Java, to demonstrate OCaml interop over DBus is provided in `/dbus-example/editor`:
-![screenshot](meta/editor.png)
-
-This program is purposely very limited as it only exists to demonstrate the simplicity of invoking the compiler from a remote process.
+The compiler has an option `-s` that makes it run as a DBus service, exposing relevant functionality over an interface called `Compiler` (with methods `ParseIMP` and `CompileIMP`). The response from this service is JSON. The interface allows other applications to invoke the compiler with minimal latency, as shown in a demonstration screenshot below:
+![screenshot](meta/screen.png)
 
 ## TODO:
-- Add more flexible command line options.
 - Actually handle parsing errors w/ locations.
-- Provide `emacs`, `vim`, etc. highlighting files.
 - Wouldn't be far-fetched to provide debugging information w/ lines corresponding to imperative constructs of the language. Though this would require actually using LLVM's targeting APIs directly.
-- Provide more example programs in the `example/` sub-directory.
 
 ## Implementation Notes 
 - The `new` construct is known as `let` in this language, though, that might change given that both the refer to mutable lvalues.
