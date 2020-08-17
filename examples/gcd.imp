@@ -1,5 +1,5 @@
 
-
+// compute greatest common divisor
 integer gcd(x, y) =
   do
   while (x != y) {

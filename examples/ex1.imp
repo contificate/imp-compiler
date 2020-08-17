@@ -1,4 +1,5 @@
 
+// iterative multiplication
 integer mult(x, y) =
   let a := 0 in
   do while (y > 0) {
@@ -6,6 +7,7 @@ integer mult(x, y) =
     y := y - 1;
   } return a
 
+// compute factorial using mult
 integer fact(x) =
   let z := x in let y := 1 in
   do

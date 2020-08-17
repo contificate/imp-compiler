@@ -65,8 +65,15 @@ rule tokenise = parse
     { DO }
 | "return"
     { RETURN }
+| "//"
+    { read_comment lexbuf }
 | ['a'-'z']+ as i
   { IDENT i }
 | eof
    { EOF }
+and read_comment = parse
+| '\n'
+    { tokenise lexbuf }
+| [^ '\n']+
+    { read_comment lexbuf }
    

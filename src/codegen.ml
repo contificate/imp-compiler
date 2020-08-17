@@ -7,36 +7,44 @@ type gen_ctx = { md: llmodule; b: llbuilder }
 
 let ctx = create_context ()
 let i32 = i32_type ctx
-type env = (string * llvalue) list
+
+type value =
+  | Constant of llvalue
+  | Alloca of llvalue
+
+type env = (string * value) list
 
 let const_tt = const_int (i1_type ctx) 1
 let const_ff = const_int (i1_type ctx) 0
 
 exception Error of string
 
-let (>>) g f = (fun x -> g x |> f)
+let (>>) f g = fun x -> f x |> g
 
-let undefined = const_int i32 (-1)
-
-(* no built-in way it seems, sue me *)
-let is_pointer_t v =
-  let typ = string_of_lltype (type_of v) in
-  String.get typ (String.length typ - 1) = '*'
+let undefined =
+  const_int i32 (-1)
 
 let rec lookup k = function
   | [] -> None
-  | ((x, v) :: tl) ->
+  | (x, v) :: tl ->
      if k = x then
        Some v
      else
        lookup k tl
 
+let compile_value gc = function
+  | Constant v -> v
+  | Alloca l -> build_load l "" gc.b
+
+let extract_value = function
+  | Constant v -> v
+  | Alloca l -> l
+
 let value_of_var gc env x =
   match lookup x env with
   | None -> raise (Error ("No variable " ^ x ^ " in environment!"))
-  | Some v ->
-     (if is_pointer_t v then build_load v "" gc.b else v)
-
+  | Some v -> compile_value gc v
+     
 let op_of_op = function
   | Add -> build_add
   | Sub -> build_sub
@@ -70,11 +78,11 @@ let rec compile_expr gc env e =
   | Literal i -> (const_int i32 i, env)
   | Var x -> (value_of_var gc env x, env)
   | Let (x, e, e') ->
-  (* evaluate e, extend x  *)
+     (* evaluate e, extend x  *)
      let loc = build_alloca i32 x gc.b in
      let (ex, _) = compile_expr gc env e in
      build_store ex loc gc.b |> ignore;
-     compile_expr gc ((x, loc) :: env) e'
+     compile_expr gc ((x, Alloca loc) :: env) e'
   | Apply (f, xs) ->
      (match lookup_function f gc.md with
       | None -> raise (Error ("Couldn't find function " ^ f))
@@ -96,34 +104,34 @@ let rec compile_expr gc env e =
        let (e', _) = compile_expr gc env e in
        (match lookup x env with
         | None -> raise (Error ("No such variable " ^ x))
-        | Some l -> build_store e' l gc.b |> ignore)
+        | Some l -> build_store e' (extract_value l) gc.b |> ignore)
     | If (c, t, f) ->
        let source = insertion_block gc.b in
        let parent = block_parent source in
-        let new_block n =
-          append_block ctx n parent
-        in
-        begin
-          let (sink, tb, eb) = (new_block "sink", new_block "then", new_block "else") in
-          let fill (branch, body) =
-            position_at_end branch gc.b;
-            compile_cmd gc env body;
-            build_br sink gc.b |> ignore
-          in
-          (* create the conditional branch *)
-          let cond = compile_bexpr gc env c in
-          position_at_end source gc.b;
-          build_cond_br cond tb eb gc.b |> ignore;
-          (* fill in branch targets *)
-          fill (tb, t);
-          fill (eb, f);
-          (* continue from sink *)
-          position_at_end sink gc.b
-        end
+       let new_block n =
+         append_block ctx n parent
+       in
+       begin
+         let (sink, tb, eb) = (new_block "sink", new_block "then", new_block "else") in
+         let fill (branch, body) =
+           position_at_end branch gc.b;
+           compile_cmd gc env body;
+           build_br sink gc.b |> ignore
+         in
+         (* create the conditional branch *)
+         let cond = compile_bexpr gc env c in
+         position_at_end source gc.b;
+         build_cond_br cond tb eb gc.b |> ignore;
+         (* fill in branch targets *)
+         fill (tb, t);
+         fill (eb, f);
+         (* continue from sink *)
+         position_at_end sink gc.b
+       end
     | New (x, e, c) ->
        let loc = build_alloca i32 x gc.b in
        build_store (compile_expr gc env e |> fst) loc gc.b |> ignore;
-       compile_cmd gc ((x, loc) :: env) c
+       compile_cmd gc ((x, Alloca loc) :: env) c
     | Call (f, xs) ->
        (match lookup_function f gc.md with
         | None -> raise (Error ("Couldn't find function " ^ f))
@@ -131,26 +139,26 @@ let rec compile_expr gc env e =
            (build_call fn (List.map (compile_expr gc env >> fst) xs |> Array.of_list) "" gc.b, env) |> ignore)
     | While (c, body) ->
        let parent = block_parent (insertion_block gc.b) in
-        let new_block n =
-          append_block ctx n parent
-        in
-        let (sink, tb, bb) = (new_block "sink", new_block "test", new_block "body") in
-        begin
+       let new_block n =
+         append_block ctx n parent
+       in
+       let (sink, tb, bb) = (new_block "sink", new_block "test", new_block "body") in
+       begin
           (* branch to while header *)
-          position_at_end (insertion_block gc.b) gc.b;
-          build_br tb gc.b |> ignore;
-          (* test loop condition in header *)
-          position_at_end tb gc.b;
-          let cond = compile_bexpr gc env c in
-          build_cond_br cond bb sink gc.b |> ignore;
-          (* compile loop body *)
+         position_at_end (insertion_block gc.b) gc.b;
+         build_br tb gc.b |> ignore;
+         (* test loop condition in header *)
+         position_at_end tb gc.b;
+         let cond = compile_bexpr gc env c in
+         build_cond_br cond bb sink gc.b |> ignore;
+         (* compile loop body *)
           position_at_end bb gc.b;
           compile_cmd gc env body;
           (* jump back to loop test *)
           build_br tb gc.b |> ignore;
           (* continue generation in sink *)
           position_at_end sink gc.b;
-        end
+       end
   and
     compile_bexpr gc env = function
     | True -> const_tt
@@ -171,10 +179,10 @@ let compile_function gc (f, xs, body) =
   begin
     (* go to entry *)
     position_at_end entry gc.b;
-    let locs : env = List.map (fun x -> (x, build_alloca i32 x gc.b)) xs in
     (* spill every argument into locals *)
+    let locs = List.map (fun x -> (x, Alloca (build_alloca i32 x gc.b))) xs in
     let spill i arg =
-      build_store arg (List.nth locs i |> snd) gc.b |> ignore
+      build_store arg (List.nth locs i |> snd |> extract_value) gc.b |> ignore
     in
     Array.iteri spill (params func);
     (* compile the body and return its evaluation *)
