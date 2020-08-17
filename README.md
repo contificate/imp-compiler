@@ -32,7 +32,7 @@ You can also play around with LLVM's own optimisations w/ `opt`, for example: `o
 
 ## DBus interface
 The compiler has an option `-s` that makes it run as a DBus service, exposing relevant functionality over an interface called `Compiler` (with methods `ParseIMP` and `CompileIMP`). The response from this service is JSON. The interface allows other applications to invoke the compiler with minimal latency, as shown in a demonstration screenshot below:
-![screenshot](meta/screen.png)
+![screenshot](meta/editor.png)
 
 ## TODO:
 - Actually handle parsing errors w/ locations.
