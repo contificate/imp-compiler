@@ -4,6 +4,8 @@
   exception Error of string
 }
 
+let ident = ['_' 'a'-'z' 'A'-'Z'] ['_' 'a'-'z' 'A'-'Z' '0'-'9']*
+
 rule tokenise = parse
 | [' ' '\t' '\n']
     { tokenise lexbuf }
@@ -67,7 +69,7 @@ rule tokenise = parse
     { RETURN }
 | "//"
     { read_comment lexbuf }
-| ['a'-'z']+ as i
+| ident as i
   { IDENT i }
 | eof
    { EOF }
