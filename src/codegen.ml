@@ -12,25 +12,18 @@ type value =
   | Constant of llvalue
   | Alloca of llvalue
 
-type env = (string * value) list
+module SM = Map.Make(String)
+type env = value SM.t
 
 let const_tt = const_int (i1_type ctx) 1
 let const_ff = const_int (i1_type ctx) 0
 
 exception Error of string
 
-let (>>) f g = fun x -> f x |> g
+let (>>) f g x = g (f x)
 
 let undefined =
   const_int i32 (-1)
-
-let rec lookup k = function
-  | [] -> None
-  | (x, v) :: tl ->
-     if k = x then
-       Some v
-     else
-       lookup k tl
 
 let compile_value gc = function
   | Constant v -> v
@@ -41,7 +34,7 @@ let extract_value = function
   | Alloca l -> l
 
 let value_of_var gc env x =
-  match lookup x env with
+  match SM.find_opt x env with
   | None -> raise (Error ("No variable " ^ x ^ " in environment!"))
   | Some v -> compile_value gc v
      
@@ -82,7 +75,7 @@ let rec compile_expr gc env e =
      let loc = build_alloca i32 x gc.b in
      let (ex, _) = compile_expr gc env e in
      build_store ex loc gc.b |> ignore;
-     compile_expr gc ((x, Alloca loc) :: env) e'
+     compile_expr gc (SM.add x (Alloca loc) env) e'
   | Apply (f, xs) ->
      (match lookup_function f gc.md with
       | None -> raise (Error ("Couldn't find function " ^ f))
@@ -102,7 +95,7 @@ let rec compile_expr gc env e =
        List.iter (compile_cmd gc env) cs
     | Assign (x, e) ->
        let (e', _) = compile_expr gc env e in
-       (match lookup x env with
+       (match SM.find_opt x env with
         | None -> raise (Error ("No such variable " ^ x))
         | Some l -> build_store e' (extract_value l) gc.b |> ignore)
     | If (c, t, f) ->
@@ -131,7 +124,7 @@ let rec compile_expr gc env e =
     | New (x, e, c) ->
        let loc = build_alloca i32 x gc.b in
        build_store (compile_expr gc env e |> fst) loc gc.b |> ignore;
-       compile_cmd gc ((x, Alloca loc) :: env) c
+       compile_cmd gc (SM.add x (Alloca loc) env) c
     | Call (f, xs) ->
        (match lookup_function f gc.md with
         | None -> raise (Error ("Couldn't find function " ^ f))
@@ -180,16 +173,23 @@ let compile_function gc (f, xs, body) =
     (* go to entry *)
     position_at_end entry gc.b;
     (* spill every argument into locals *)
-    let locs = List.map (fun x -> (x, Alloca (build_alloca i32 x gc.b))) xs in
+    let env =
+      List.fold_left
+        (fun env x -> SM.add x (Alloca (build_alloca i32 x gc.b)) env) SM.empty xs
+    in
     let spill i arg =
-      build_store arg (List.nth locs i |> snd |> extract_value) gc.b |> ignore
+      let x = List.nth xs i in
+      (match SM.find x env with
+       | Alloca loc ->
+          ignore (build_store arg loc gc.b)
+       | _ -> ())
     in
     Array.iteri spill (params func);
     (* compile the body and return its evaluation *)
-    let result = compile_expr gc locs body  |> fst in
+    let (result, _) = compile_expr gc env body in
     if (f = "main" && arity = 0) then
       (match lookup_function "printf" gc.md with
-       | None -> build_ret (const_int i32 1) |> ignore
+       | None -> build_ret (const_int i32 1) gc.b |> ignore
        | Some printf ->
           let reloc = build_global_stringptr "result = %d\n" "fmt" gc.b in
           let fmt = build_gep reloc [|(const_int i32 0)|] "" gc.b in

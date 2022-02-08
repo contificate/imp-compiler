@@ -10,14 +10,18 @@ let parse str =
      let (s, e) = (Lexing.lexeme_start lexbuf, Lexing.lexeme_end lexbuf) in
      Error ("Parse error, offsets: " ^ string_of_int s ^ " -> " ^ string_of_int e)
 
+let (>>) f g x = g (f x)
+
 let print_parse f =
-  match Core.In_channel.read_all f |> parse with
+  match parse (Core.In_channel.read_all f) with
   | Ok defs ->
-     List.iter (fun d -> Ast.show_def d |> print_endline) defs
-  | Error msg -> print_endline msg
+     List.iter (Ast.show_def >> print_endline) defs
+  | Error msg ->
+     print_endline msg
 
 let compile f =
-  match parse (Core.In_channel.read_all f) with
+  let open Core in
+  match parse (In_channel.read_all f) with
   | Error msg -> print_endline msg
   | Ok defs ->
      let md = Llvm.create_module CG.ctx f in
@@ -26,7 +30,7 @@ let compile f =
      | Some err ->
         print_endline err
      | _ ->
-        Core.Out_channel.write_all (f ^ ".ll") ~data:ir
+        Out_channel.write_all (f ^ ".ll") ~data:ir
 
 let options =
   [
@@ -36,11 +40,12 @@ let options =
   ]
 
 
-let unrecognised x =
-  "unrecognised option" ^ x ^ ", please use -help" |> print_endline
+let unrecognised =
+  Printf.printf "unrecognised option, %s, please use -help"
 
 let main () =
   Arg.parse options unrecognised "IMP Compiler"
 
-let _ = main ()
+let () =
+  main ()
 
